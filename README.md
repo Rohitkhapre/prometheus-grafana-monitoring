@@ -30,19 +30,12 @@
 
 ## ✨ **Features**
 
-<table>
-<tr>
-<td width="50%">
-
 ### 🎯 **Core Features**
 - 🔄 **Multi-Environment Support** - Auto-detects Docker/Kubernetes
 - 🏭 **Production-Ready** - Supports 20+ servers
 - 🎛️ **Flexible Monitoring** - Docker-only, system-only, or hybrid
 - 📈 **Comprehensive Metrics** - System, container, and application health
 - 🎯 **Centralized Management** - Single server manages all agents
-
-</td>
-<td width="50%">
 
 ### 🛠️ **Advanced Features**
 - ⚡ **One-Command Deployment** - Automated system detection
@@ -51,10 +44,6 @@
 - 💾 **Backup & Restore** - Automated backup functionality
 - 🔍 **Health Monitoring** - Comprehensive health check scripts
 - 📋 **Inventory Management** - YAML-based server configuration
-
-</td>
-</tr>
-</table>
 
 ## 📋 **Prerequisites**
 
@@ -199,19 +188,12 @@ To monitor your applications:
 
 The stack includes comprehensive alerting rules for:
 
-<table>
-<tr>
-<td width="50%">
-
 ### 🖥️ **System Alerts**
 - 🔴 **High CPU usage** (>80%)
 - 🟡 **High memory usage** (>85%)
 - 🔴 **High disk usage** (>90%)
 - 🟡 **System load high**
 - 🔴 **Node down**
-
-</td>
-<td width="50%">
 
 ### 🐳 **Docker Alerts**
 - 🔴 **Container down**
@@ -222,10 +204,6 @@ The stack includes comprehensive alerting rules for:
 - 🔴 **Docker daemon down**
 - 🟡 **High disk usage**
 - 🟡 **Network errors**
-
-</td>
-</tr>
-</table>
 
 ### Configuring Notifications
 

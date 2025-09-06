@@ -58,8 +58,6 @@
 
 ## 📋 **Prerequisites**
 
-<div align="center">
-
 | 🐳 **Docker Deployment** | ☸️ **Kubernetes Deployment** |
 |:---:|:---:|
 | Docker Engine 20.10+ | Kubernetes 1.20+ |
@@ -68,13 +66,9 @@
 | 10GB disk space | 10GB disk space |
 | | Storage class configured |
 
-</div>
-
 > 💡 **Tip**: For production deployments with 20+ servers, we recommend 8GB+ RAM and 50GB+ disk space on the monitoring server.
 
 ## 🚀 **Quick Start**
-
-<div align="center">
 
 ### 🧪 **Local Development/Testing**
 
@@ -91,8 +85,6 @@ cd prometheus-grafana-monitoring
 # 📊 Prometheus: http://localhost:9090
 # 🚨 Alertmanager: http://localhost:9093
 ```
-
----
 
 ### 🏭 **Production (20+ Servers)**
 
@@ -115,13 +107,9 @@ cp production/inventory/servers.yml.example production/inventory/servers.yml
 ./production/scripts/deploy-production.sh --verify-only
 ```
 
-</div>
-
 > 🎉 **That's it!** Your monitoring stack is now running and ready to monitor your infrastructure!
 
 ## 📁 **Project Structure**
-
-<div align="center">
 
 ```
 prometheus-grafana-monitoring/
@@ -157,8 +145,6 @@ prometheus-grafana-monitoring/
 ├── 📄 Makefile                  # ⚡ Easy command interface
 └── 📄 README.md                 # 📖 This file
 ```
-
-</div>
 
 ## 🔧 Configuration
 
@@ -198,8 +184,6 @@ To monitor your applications:
 
 ## 📊 **Monitoring Components**
 
-<div align="center">
-
 | 🎯 **Component** | 🎨 **Purpose** | 🔌 **Port** | ✨ **Key Features** |
 |:---:|:---|:---:|:---|
 | 📊 **Prometheus** | Metrics collection and storage | `9090` | Service discovery, alerting rules, data retention |
@@ -209,17 +193,11 @@ To monitor your applications:
 | 🚨 **Alertmanager** | Alert handling and routing | `9093` | Email notifications, webhook integrations |
 | 🔍 **Blackbox Exporter** | Service health checks | `9115` | HTTP, TCP, DNS, ICMP probes |
 
-</div>
-
 ## 🚨 **Alerting**
-
-<div align="center">
 
 ### 🔥 **Pre-configured Alerts**
 
 The stack includes comprehensive alerting rules for:
-
-</div>
 
 <table>
 <tr>
@@ -472,8 +450,6 @@ kubectl apply -f kubernetes/
 
 ## 🎯 **Quick Commands Reference**
 
-<div align="center">
-
 | 🚀 **Action** | 💻 **Command** | 📝 **Description** |
 |:---:|:---|:---|
 | 🏃 **Deploy** | `./scripts/deploy.sh` | Deploy monitoring stack |
@@ -483,11 +459,7 @@ kubectl apply -f kubernetes/
 | 🏭 **Production Deploy** | `./production/scripts/deploy-production.sh` | Deploy to production |
 | 📊 **View Logs** | `./scripts/deploy.sh logs` | View service logs |
 
-</div>
-
 ## 🌟 **What's Next?**
-
-<div align="center">
 
 ### 🎉 **Congratulations!** You now have a complete monitoring solution!
 
@@ -497,11 +469,7 @@ kubectl apply -f kubernetes/
 | 🚨 **Set Up Alerting** | 🚀 [Deployment Guide](docs/DEPLOYMENT.md) | 🏭 [Production Guide](docs/PRODUCTION-DEPLOYMENT.md) |
 | 📈 **Add Custom Metrics** | 📋 [Production Summary](PRODUCTION-SUMMARY.md) | ⚡ [Makefile Commands](Makefile) |
 
-</div>
-
 ---
-
-<div align="center">
 
 ### 🤝 **Contributing & Support**
 
@@ -513,8 +481,6 @@ kubectl apply -f kubernetes/
 **🐛 Found a bug?** [Open an issue](https://github.com/Rohitkhapre/prometheus-grafana-monitoring/issues)
 
 **💡 Have an idea?** [Submit a PR](https://github.com/Rohitkhapre/prometheus-grafana-monitoring/pulls)
-
-</div>
 
 ---
 

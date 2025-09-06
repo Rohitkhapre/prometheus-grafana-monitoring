@@ -1,0 +1,31 @@
+# Custom Grafana Dockerfile
+# This can be used to build a custom Grafana image with pre-configured dashboards
+
+FROM grafana/grafana:10.0.0
+
+# Add custom configurations
+COPY ../configs/grafana/ /etc/grafana/
+COPY ../dashboards/ /var/lib/grafana/dashboards/
+
+# Set environment variables
+ENV GF_SECURITY_ADMIN_USER=admin
+ENV GF_SECURITY_ADMIN_PASSWORD=admin
+ENV GF_USERS_ALLOW_SIGN_UP=false
+ENV GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
+
+# Create necessary directories
+RUN mkdir -p /var/lib/grafana/dashboards
+
+# Set permissions
+USER root
+RUN chown -R grafana:grafana /var/lib/grafana/dashboards
+USER grafana
+
+# Expose port
+EXPOSE 3000
+
+# Set working directory
+WORKDIR /var/lib/grafana
+
+# Default command
+CMD ["grafana-server", "--config=/etc/grafana/grafana.ini"]

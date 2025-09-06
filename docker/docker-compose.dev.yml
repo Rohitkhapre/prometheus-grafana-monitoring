@@ -1,0 +1,64 @@
+# Development Docker Compose Override
+# This file extends the main docker-compose.yml for development purposes
+
+version: '3.8'
+
+services:
+  # Override Prometheus for development
+  prometheus:
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./configs/rules:/etc/prometheus/rules:ro
+      - prometheus_dev_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=24h'  # Shorter retention for dev
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--log.level=debug'  # Debug logging for development
+
+  # Override Grafana for development
+  grafana:
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_dev_data:/var/lib/grafana
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=true  # Allow signup in dev
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
+      - GF_LOG_LEVEL=debug  # Debug logging for development
+
+  # Add a test application for monitoring
+  test-app:
+    image: nginx:alpine
+    container_name: test-app
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/nginx-test.conf:/etc/nginx/nginx.conf:ro
+    labels:
+      - "prometheus.io/scrape=true"
+      - "prometheus.io/port=80"
+      - "prometheus.io/path=/metrics"
+    networks:
+      - monitoring
+
+volumes:
+  prometheus_dev_data:
+    driver: local
+  grafana_dev_data:
+    driver: local
+
+networks:
+  monitoring:
+    external: true

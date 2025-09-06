@@ -1,0 +1,201 @@
+# Production Server Inventory
+# This file defines all servers to be monitored with their specific configurations
+
+servers:
+  # Web Application Servers (Docker + System Monitoring)
+  - name: "web-app-01"
+    hostname: "web01.yourdomain.com"
+    ip: "10.0.1.10"
+    environment: "production"
+    role: "web-application"
+    monitoring_type: "docker+system"
+    docker_enabled: true
+    system_monitoring: true
+    prometheus_port: 9100
+    cadvisor_port: 8080
+    ssh_user: "monitoring"
+    ssh_key: "~/.ssh/monitoring_key"
+    tags: ["web", "docker", "production"]
+    
+  - name: "web-app-02"
+    hostname: "web02.yourdomain.com"
+    ip: "10.0.1.11"
+    environment: "production"
+    role: "web-application"
+    monitoring_type: "docker+system"
+    docker_enabled: true
+    system_monitoring: true
+    prometheus_port: 9100
+    cadvisor_port: 8080
+    ssh_user: "monitoring"
+    ssh_key: "~/.ssh/monitoring_key"
+    tags: ["web", "docker", "production"]
+
+  # Database Servers (System Monitoring Only)
+  - name: "db-primary"
+    hostname: "db01.yourdomain.com"
+    ip: "10.0.2.10"
+    environment: "production"
+    role: "database"
+    monitoring_type: "system"
+    docker_enabled: false
+    system_monitoring: true
+    prometheus_port: 9100
+    ssh_user: "monitoring"
+    ssh_key: "~/.ssh/monitoring_key"
+    tags: ["database", "system", "production"]
+    
+  - name: "db-replica"
+    hostname: "db02.yourdomain.com"
+    ip: "10.0.2.11"
+    environment: "production"
+    role: "database"
+    monitoring_type: "system"
+    docker_enabled: false
+    system_monitoring: true
+    prometheus_port: 9100
+    ssh_user: "monitoring"
+    ssh_key: "~/.ssh/monitoring_key"
+    tags: ["database", "system", "production"]
+
+  # Kubernetes Cluster Nodes
+  - name: "k8s-master"
+    hostname: "k8s-master.yourdomain.com"
+    ip: "10.0.3.10"
+    environment: "production"
+    role: "kubernetes-master"
+    monitoring_type: "kubernetes+system"
+    docker_enabled: true
+    system_monitoring: true
+    kubernetes_enabled: true
+    prometheus_port: 9100
+    cadvisor_port: 8080
+    ssh_user: "monitoring"
+    ssh_key: "~/.ssh/monitoring_key"
+    tags: ["kubernetes", "master", "production"]
+    
+  - name: "k8s-worker-01"
+    hostname: "k8s-worker-01.yourdomain.com"
+    ip: "10.0.3.11"
+    environment: "production"
+    role: "kubernetes-worker"
+    monitoring_type: "kubernetes+system"
+    docker_enabled: true
+    system_monitoring: true
+    kubernetes_enabled: true
+    prometheus_port: 9100
+    cadvisor_port: 8080
+    ssh_user: "monitoring"
+    ssh_key: "~/.ssh/monitoring_key"
+    tags: ["kubernetes", "worker", "production"]
+    
+  - name: "k8s-worker-02"
+    hostname: "k8s-worker-02.yourdomain.com"
+    ip: "10.0.3.12"
+    environment: "production"
+    role: "kubernetes-worker"
+    monitoring_type: "kubernetes+system"
+    docker_enabled: true
+    system_monitoring: true
+    kubernetes_enabled: true
+    prometheus_port: 9100
+    cadvisor_port: 8080
+    ssh_user: "monitoring"
+    ssh_key: "~/.ssh/monitoring_key"
+    tags: ["kubernetes", "worker", "production"]
+
+  # Load Balancers (System Monitoring Only)
+  - name: "lb-primary"
+    hostname: "lb01.yourdomain.com"
+    ip: "10.0.4.10"
+    environment: "production"
+    role: "load-balancer"
+    monitoring_type: "system"
+    docker_enabled: false
+    system_monitoring: true
+    prometheus_port: 9100
+    ssh_user: "monitoring"
+    ssh_key: "~/.ssh/monitoring_key"
+    tags: ["loadbalancer", "system", "production"]
+
+  # Development Servers (Docker + System Monitoring)
+  - name: "dev-server-01"
+    hostname: "dev01.yourdomain.com"
+    ip: "10.0.5.10"
+    environment: "development"
+    role: "development"
+    monitoring_type: "docker+system"
+    docker_enabled: true
+    system_monitoring: true
+    prometheus_port: 9100
+    cadvisor_port: 8080
+    ssh_user: "monitoring"
+    ssh_key: "~/.ssh/monitoring_key"
+    tags: ["development", "docker", "system"]
+
+  # Staging Servers (Docker + System Monitoring)
+  - name: "staging-server-01"
+    hostname: "staging01.yourdomain.com"
+    ip: "10.0.6.10"
+    environment: "staging"
+    role: "staging"
+    monitoring_type: "docker+system"
+    docker_enabled: true
+    system_monitoring: true
+    prometheus_port: 9100
+    cadvisor_port: 8080
+    ssh_user: "monitoring"
+    ssh_key: "~/.ssh/monitoring_key"
+    tags: ["staging", "docker", "system"]
+
+  # Monitoring Server (Central Prometheus + Grafana)
+  - name: "monitoring-server"
+    hostname: "monitoring.yourdomain.com"
+    ip: "10.0.7.10"
+    environment: "production"
+    role: "monitoring"
+    monitoring_type: "central"
+    docker_enabled: true
+    system_monitoring: true
+    prometheus_port: 9090
+    grafana_port: 3000
+    alertmanager_port: 9093
+    ssh_user: "monitoring"
+    ssh_key: "~/.ssh/monitoring_key"
+    tags: ["monitoring", "central", "production"]
+
+# Global Configuration
+global_config:
+  prometheus_retention: "30d"
+  scrape_interval: "15s"
+  evaluation_interval: "15s"
+  alertmanager_url: "http://monitoring.yourdomain.com:9093"
+  grafana_url: "http://monitoring.yourdomain.com:3000"
+  
+# Network Configuration
+network:
+  internal_network: "10.0.0.0/8"
+  monitoring_network: "10.0.7.0/24"
+  allowed_ports:
+    - 9100  # Node Exporter
+    - 8080  # cAdvisor
+    - 9090  # Prometheus
+    - 3000  # Grafana
+    - 9093  # Alertmanager
+
+# Security Configuration
+security:
+  ssh_key_path: "~/.ssh/monitoring_key"
+  firewall_rules:
+    - port: 9100
+      protocol: "tcp"
+      source: "10.0.7.0/24"
+      description: "Node Exporter"
+    - port: 8080
+      protocol: "tcp"
+      source: "10.0.7.0/24"
+      description: "cAdvisor"
+    - port: 22
+      protocol: "tcp"
+      source: "10.0.7.0/24"
+      description: "SSH"

@@ -1,0 +1,198 @@
+# System-Only Monitoring Scenario
+# This scenario monitors only system metrics without Docker
+# Suitable for: Database servers, load balancers, bare metal servers, legacy systems
+
+scenario_name: "System-Only Monitoring"
+description: "Monitor system metrics without Docker containers"
+suitable_for: ["database", "load-balancer", "bare-metal", "legacy-systems", "network-devices"]
+
+# Components to deploy
+components:
+  - name: "node-exporter"
+    description: "System metrics (CPU, memory, disk, network, processes)"
+    required: true
+    port: 9100
+    
+  - name: "blackbox-exporter"
+    description: "Service health checks (HTTP, TCP, DNS, ICMP)"
+    required: false
+    port: 9115
+
+# Prometheus scrape configuration
+prometheus_config:
+  scrape_configs:
+    - job_name: 'node-exporter'
+      static_configs:
+        - targets: ['${hostname}:9100']
+      labels:
+        environment: '${environment}'
+        role: '${role}'
+        monitoring_type: 'system'
+      scrape_interval: 15s
+      
+    - job_name: 'blackbox'
+      metrics_path: /probe
+      params:
+        module: [http_2xx, tcp_connect]
+      static_configs:
+        - targets:
+            - http://${hostname}/health
+            - tcp://${hostname}:22
+        labels:
+          environment: '${environment}'
+          role: '${role}'
+          monitoring_type: 'system'
+      relabel_configs:
+        - source_labels: [__address__]
+          target_label: __param_target
+        - source_labels: [__param_target]
+          target_label: instance
+        - target_label: __address__
+          replacement: blackbox-exporter:9115
+
+# Alerting rules
+alerting_rules:
+  - alert: NodeDown
+    expr: up{job="node-exporter"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Node {{ $labels.instance }} is down"
+      
+  - alert: HighCPUUsage
+    expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High CPU usage on {{ $labels.instance }}"
+      
+  - alert: HighMemoryUsage
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage on {{ $labels.instance }}"
+      
+  - alert: HighDiskUsage
+    expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 90
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High disk usage on {{ $labels.instance }}"
+      
+  - alert: SystemLoadHigh
+    expr: node_load1 > 4
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High system load on {{ $labels.instance }}"
+
+# Grafana dashboards
+dashboards:
+  - name: "System Overview"
+    file: "system-overview.json"
+    description: "Comprehensive system monitoring"
+    
+  - name: "Database Monitoring"
+    file: "database-overview.json"
+    description: "Database-specific metrics (if applicable)"
+
+# Installation requirements
+requirements:
+  - systemd (for node-exporter service)
+  - ufw (for firewall configuration)
+  - curl (for health checks)
+
+# Installation script template
+install_script: |
+  #!/bin/bash
+  set -e
+  
+  # Install Node Exporter
+  sudo useradd --no-create-home --shell /bin/false node_exporter || true
+  cd /tmp
+  wget https://github.com/prometheus/node_exporter/releases/download/v1.6.0/node_exporter-1.6.0.linux-amd64.tar.gz
+  tar xzf node_exporter-1.6.0.linux-amd64.tar.gz
+  sudo cp node_exporter-1.6.0.linux-amd64/node_exporter /usr/local/bin/
+  sudo chown node_exporter:node_exporter /usr/local/bin/node_exporter
+  
+  # Create systemd service for Node Exporter
+  sudo tee /etc/systemd/system/node_exporter.service > /dev/null << 'EOF'
+  [Unit]
+  Description=Node Exporter
+  Wants=network-online.target
+  After=network-online.target
+  
+  [Service]
+  User=node_exporter
+  Group=node_exporter
+  Type=simple
+  ExecStart=/usr/local/bin/node_exporter --web.listen-address=:9100
+  
+  [Install]
+  WantedBy=multi-user.target
+  EOF
+  
+  sudo systemctl daemon-reload
+  sudo systemctl enable node_exporter
+  sudo systemctl start node_exporter
+  
+  # Configure firewall
+  sudo ufw allow 9100/tcp comment "Node Exporter"
+  
+  echo "System monitoring setup complete!"
+
+# Health check endpoints
+health_checks:
+  - name: "Node Exporter"
+    url: "http://localhost:9100/metrics"
+    expected_status: 200
+
+# Metrics to monitor
+key_metrics:
+  system:
+    - node_cpu_seconds_total
+    - node_memory_MemTotal_bytes
+    - node_memory_MemAvailable_bytes
+    - node_filesystem_size_bytes
+    - node_filesystem_avail_bytes
+    - node_network_receive_bytes_total
+    - node_network_transmit_bytes_total
+    - node_load1
+    - node_load5
+    - node_load15
+    - node_disk_io_time_seconds_total
+    - node_disk_read_bytes_total
+    - node_disk_written_bytes_total
+    
+  processes:
+    - node_processes_state
+    - node_processes_fds_open
+    - node_processes_threads
+
+# Custom metrics for specific roles
+role_specific_metrics:
+  database:
+    - mysql_up (if MySQL)
+    - postgresql_up (if PostgreSQL)
+    - mongodb_up (if MongoDB)
+    
+  load_balancer:
+    - nginx_up (if Nginx)
+    - haproxy_up (if HAProxy)
+    - apache_up (if Apache)
+    
+  network_device:
+    - snmp_up (if SNMP enabled)
+    - network_interface_up
+
+# Performance tuning
+performance_tuning:
+  scrape_interval: "30s"  # Less frequent for system-only monitoring
+  retention: "30d"
+  max_samples: 50000000

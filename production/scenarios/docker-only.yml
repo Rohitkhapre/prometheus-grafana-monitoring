@@ -1,0 +1,190 @@
+# Docker-Only Monitoring Scenario
+# This scenario monitors only Docker containers and their host systems
+# Suitable for: Application servers, development environments, containerized workloads
+
+scenario_name: "Docker-Only Monitoring"
+description: "Monitor Docker containers and host system metrics"
+suitable_for: ["web-application", "development", "staging", "containerized-workloads"]
+
+# Components to deploy
+components:
+  - name: "node-exporter"
+    description: "System metrics (CPU, memory, disk, network)"
+    required: true
+    port: 9100
+    
+  - name: "cadvisor"
+    description: "Container metrics (CPU, memory, network, filesystem)"
+    required: true
+    port: 8080
+    
+  - name: "docker-daemon"
+    description: "Docker daemon metrics"
+    required: false
+    port: 9323
+
+# Prometheus scrape configuration
+prometheus_config:
+  scrape_configs:
+    - job_name: 'node-exporter'
+      static_configs:
+        - targets: ['${hostname}:9100']
+      labels:
+        environment: '${environment}'
+        role: '${role}'
+        monitoring_type: 'docker+system'
+      scrape_interval: 15s
+      
+    - job_name: 'cadvisor'
+      static_configs:
+        - targets: ['${hostname}:8080']
+      labels:
+        environment: '${environment}'
+        role: '${role}'
+        monitoring_type: 'docker+system'
+      scrape_interval: 15s
+      
+    - job_name: 'docker-containers'
+      docker_sd_configs:
+        - host: unix:///var/run/docker.sock
+          refresh_interval: 5s
+          filters:
+            - name: label
+              values: ["prometheus.io/scrape=true"]
+      relabel_configs:
+        - source_labels: [__meta_docker_container_name]
+          target_label: container_name
+        - source_labels: [__meta_docker_container_label_prometheus_io_scrape]
+          target_label: __tmp_prometheus_scrape
+          regex: true
+        - source_labels: [__meta_docker_container_label_prometheus_io_path]
+          target_label: __metrics_path__
+          regex: (.+)
+        - source_labels: [__address__, __meta_docker_container_label_prometheus_io_port]
+          regex: ([^:]+)(?::\d+)?;(\d+)
+          replacement: $1:$2
+          target_label: __address__
+        - action: keep
+          source_labels: [__tmp_prometheus_scrape]
+          regex: true
+
+# Alerting rules
+alerting_rules:
+  - alert: DockerContainerDown
+    expr: up{job="docker-containers"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Docker container {{ $labels.container_name }} is down"
+      
+  - alert: DockerContainerHighCPU
+    expr: rate(container_cpu_usage_seconds_total[5m]) * 100 > 80
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Docker container {{ $labels.container_name }} high CPU usage"
+      
+  - alert: DockerContainerHighMemory
+    expr: container_memory_usage_bytes / container_spec_memory_limit_bytes * 100 > 80
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Docker container {{ $labels.container_name }} high memory usage"
+
+# Grafana dashboards
+dashboards:
+  - name: "Docker Container Overview"
+    file: "docker-overview.json"
+    description: "Comprehensive Docker container monitoring"
+    
+  - name: "System Overview"
+    file: "system-overview.json"
+    description: "Host system metrics"
+
+# Installation requirements
+requirements:
+  - docker
+  - docker-compose (optional)
+  - systemd (for node-exporter service)
+  - ufw (for firewall configuration)
+
+# Installation script template
+install_script: |
+  #!/bin/bash
+  set -e
+  
+  # Install Node Exporter
+  sudo useradd --no-create-home --shell /bin/false node_exporter || true
+  cd /tmp
+  wget https://github.com/prometheus/node_exporter/releases/download/v1.6.0/node_exporter-1.6.0.linux-amd64.tar.gz
+  tar xzf node_exporter-1.6.0.linux-amd64.tar.gz
+  sudo cp node_exporter-1.6.0.linux-amd64/node_exporter /usr/local/bin/
+  sudo chown node_exporter:node_exporter /usr/local/bin/node_exporter
+  
+  # Create systemd service for Node Exporter
+  sudo tee /etc/systemd/system/node_exporter.service > /dev/null << 'EOF'
+  [Unit]
+  Description=Node Exporter
+  Wants=network-online.target
+  After=network-online.target
+  
+  [Service]
+  User=node_exporter
+  Group=node_exporter
+  Type=simple
+  ExecStart=/usr/local/bin/node_exporter --web.listen-address=:9100
+  
+  [Install]
+  WantedBy=multi-user.target
+  EOF
+  
+  sudo systemctl daemon-reload
+  sudo systemctl enable node_exporter
+  sudo systemctl start node_exporter
+  
+  # Install cAdvisor
+  docker run -d \
+    --name=cadvisor \
+    --restart=always \
+    --volume=/:/rootfs:ro \
+    --volume=/var/run:/var/run:ro \
+    --volume=/sys:/sys:ro \
+    --volume=/var/lib/docker/:/var/lib/docker:ro \
+    --volume=/dev/disk/:/dev/disk:ro \
+    --publish=8080:8080 \
+    --privileged \
+    --device=/dev/kmsg \
+    gcr.io/cadvisor/cadvisor:v0.47.0
+  
+  # Configure firewall
+  sudo ufw allow 9100/tcp comment "Node Exporter"
+  sudo ufw allow 8080/tcp comment "cAdvisor"
+  
+  echo "Docker monitoring setup complete!"
+
+# Health check endpoints
+health_checks:
+  - name: "Node Exporter"
+    url: "http://localhost:9100/metrics"
+    expected_status: 200
+    
+  - name: "cAdvisor"
+    url: "http://localhost:8080/healthz"
+    expected_status: 200
+
+# Metrics to monitor
+key_metrics:
+  system:
+    - node_cpu_seconds_total
+    - node_memory_MemTotal_bytes
+    - node_filesystem_size_bytes
+    - node_network_receive_bytes_total
+    
+  docker:
+    - container_cpu_usage_seconds_total
+    - container_memory_usage_bytes
+    - container_network_receive_bytes_total
+    - container_fs_reads_bytes_total

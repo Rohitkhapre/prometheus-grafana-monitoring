@@ -1,0 +1,312 @@
+# Kubernetes Monitoring Scenario
+# This scenario monitors Kubernetes clusters with comprehensive metrics
+# Suitable for: Kubernetes clusters, container orchestration, microservices
+
+scenario_name: "Kubernetes Monitoring"
+description: "Comprehensive Kubernetes cluster monitoring"
+suitable_for: ["kubernetes", "microservices", "container-orchestration", "cloud-native"]
+
+# Components to deploy
+components:
+  - name: "node-exporter"
+    description: "Node system metrics"
+    required: true
+    port: 9100
+    
+  - name: "cadvisor"
+    description: "Container metrics"
+    required: true
+    port: 8080
+    
+  - name: "kube-state-metrics"
+    description: "Kubernetes object metrics"
+    required: true
+    port: 8081
+    
+  - name: "kubelet"
+    description: "Kubelet metrics"
+    required: true
+    port: 10250
+
+# Prometheus scrape configuration
+prometheus_config:
+  scrape_configs:
+    # Kubernetes API server
+    - job_name: 'kubernetes-apiservers'
+      kubernetes_sd_configs:
+      - role: endpoints
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: default;kubernetes;https
+
+    # Kubernetes nodes
+    - job_name: 'kubernetes-nodes'
+      kubernetes_sd_configs:
+      - role: node
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics
+
+    # Kubernetes cAdvisor
+    - job_name: 'kubernetes-cadvisor'
+      kubernetes_sd_configs:
+      - role: node
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+
+    # Kubernetes services
+    - job_name: 'kubernetes-service-endpoints'
+      kubernetes_sd_configs:
+      - role: endpoints
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+        action: replace
+        target_label: __scheme__
+        regex: (https?)
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_service_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_service_name]
+        action: replace
+        target_label: kubernetes_name
+
+    # Kubernetes pods
+    - job_name: 'kubernetes-pods'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+
+    # Node Exporter
+    - job_name: 'node-exporter'
+      kubernetes_sd_configs:
+      - role: endpoints
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_endpoints_name]
+        regex: 'node-exporter'
+        action: keep
+
+    # Kube State Metrics
+    - job_name: 'kube-state-metrics'
+      kubernetes_sd_configs:
+      - role: endpoints
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_endpoints_name]
+        regex: 'kube-state-metrics'
+        action: keep
+
+# Alerting rules
+alerting_rules:
+  - alert: KubernetesNodeDown
+    expr: up{job="kubernetes-nodes"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Kubernetes node {{ $labels.instance }} is down"
+      
+  - alert: KubernetesPodCrashLooping
+    expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Pod {{ $labels.pod }} is crash looping"
+      
+  - alert: KubernetesPodNotReady
+    expr: kube_pod_status_phase{phase!="Running"} > 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Pod {{ $labels.pod }} is not ready"
+      
+  - alert: KubernetesHighMemoryUsage
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage on node {{ $labels.instance }}"
+      
+  - alert: KubernetesHighCPUUsage
+    expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High CPU usage on node {{ $labels.instance }}"
+      
+  - alert: KubernetesDiskSpaceLow
+    expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 90
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Low disk space on node {{ $labels.instance }}"
+
+# Grafana dashboards
+dashboards:
+  - name: "Kubernetes Cluster Overview"
+    file: "kubernetes-cluster-overview.json"
+    description: "High-level cluster metrics"
+    
+  - name: "Kubernetes Node Metrics"
+    file: "kubernetes-node-metrics.json"
+    description: "Node-level metrics"
+    
+  - name: "Kubernetes Pod Metrics"
+    file: "kubernetes-pod-metrics.json"
+    description: "Pod-level metrics"
+    
+  - name: "Kubernetes Deployment Metrics"
+    file: "kubernetes-deployment-metrics.json"
+    description: "Deployment metrics"
+
+# Installation requirements
+requirements:
+  - kubernetes cluster
+  - kubectl configured
+  - RBAC enabled
+  - metrics-server (for resource metrics)
+
+# Kubernetes manifests
+kubernetes_manifests:
+  - name: "kube-state-metrics"
+    file: "kube-state-metrics.yaml"
+    description: "Kubernetes object metrics"
+    
+  - name: "node-exporter-daemonset"
+    file: "node-exporter-daemonset.yaml"
+    description: "Node metrics collection"
+    
+  - name: "prometheus-operator"
+    file: "prometheus-operator.yaml"
+    description: "Prometheus operator for Kubernetes"
+
+# Installation script template
+install_script: |
+  #!/bin/bash
+  set -e
+  
+  # Install kube-state-metrics
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes/kube-state-metrics/master/examples/standard/deployment.yaml
+  
+  # Install node-exporter daemonset
+  kubectl apply -f node-exporter-daemonset.yaml
+  
+  # Install prometheus operator (optional)
+  kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/bundle.yaml
+  
+  # Create monitoring namespace
+  kubectl create namespace monitoring || true
+  
+  # Apply RBAC
+  kubectl apply -f rbac.yaml
+  
+  echo "Kubernetes monitoring setup complete!"
+
+# Health check endpoints
+health_checks:
+  - name: "Kubernetes API"
+    url: "https://kubernetes.default.svc/api/v1"
+    expected_status: 200
+    
+  - name: "Node Exporter"
+    url: "http://localhost:9100/metrics"
+    expected_status: 200
+    
+  - name: "Kube State Metrics"
+    url: "http://localhost:8081/metrics"
+    expected_status: 200
+
+# Metrics to monitor
+key_metrics:
+  cluster:
+    - kube_cluster_info
+    - kube_node_info
+    - kube_pod_info
+    - kube_deployment_info
+    
+  nodes:
+    - node_cpu_seconds_total
+    - node_memory_MemTotal_bytes
+    - node_filesystem_size_bytes
+    - node_network_receive_bytes_total
+    
+  pods:
+    - kube_pod_status_phase
+    - kube_pod_container_status_restarts_total
+    - container_cpu_usage_seconds_total
+    - container_memory_usage_bytes
+    
+  deployments:
+    - kube_deployment_status_replicas
+    - kube_deployment_status_replicas_ready
+    - kube_deployment_status_replicas_available
+
+# Performance tuning
+performance_tuning:
+  scrape_interval: "15s"
+  retention: "15d"
+  max_samples: 100000000
+  evaluation_interval: "15s"

@@ -1,0 +1,74 @@
+groups:
+- name: system.rules
+  rules:
+  - alert: HighCPUUsage
+    expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High CPU usage on {{ $labels.instance }}"
+      description: "CPU usage is above 80% for more than 5 minutes on {{ $labels.instance }}."
+
+  - alert: HighMemoryUsage
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage on {{ $labels.instance }}"
+      description: "Memory usage is above 85% for more than 5 minutes on {{ $labels.instance }}."
+
+  - alert: HighDiskUsage
+    expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 90
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High disk usage on {{ $labels.instance }}"
+      description: "Disk usage is above 90% for more than 5 minutes on {{ $labels.instance }}."
+
+  - alert: SystemLoadHigh
+    expr: node_load1 > 4
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High system load on {{ $labels.instance }}"
+      description: "System load is above 4 for more than 5 minutes on {{ $labels.instance }}."
+
+  - alert: NodeDown
+    expr: up{job="node-exporter"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Node {{ $labels.instance }} is down"
+      description: "Node {{ $labels.instance }} has been down for more than 1 minute."
+
+  - alert: HighNetworkTraffic
+    expr: rate(node_network_receive_bytes_total[5m]) + rate(node_network_transmit_bytes_total[5m]) > 1000000000
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High network traffic on {{ $labels.instance }}"
+      description: "Network traffic is above 1GB/s for more than 5 minutes on {{ $labels.instance }}."
+
+  - alert: HighDiskIO
+    expr: rate(node_disk_io_time_seconds_total[5m]) > 0.8
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High disk I/O on {{ $labels.instance }}"
+      description: "Disk I/O is above 80% for more than 5 minutes on {{ $labels.instance }}."
+
+  - alert: SystemUptimeLow
+    expr: (time() - node_boot_time_seconds) < 3600
+    for: 0m
+    labels:
+      severity: info
+    annotations:
+      summary: "System recently rebooted on {{ $labels.instance }}"
+      description: "System {{ $labels.instance }} was rebooted less than 1 hour ago."

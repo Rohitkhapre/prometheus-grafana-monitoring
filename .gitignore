@@ -1,0 +1,70 @@
+# Data directories
+data/
+backups/
+logs/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Docker volumes
+docker-volumes/
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Node modules (if any)
+node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Backup files
+*.bak
+*.backup
+
+# Local configuration overrides
+docker-compose.override.yml
+configs/local/
+configs/override/
+
+# Health reports
+health-report-*.txt
+
+# Restore directories
+restore-*/
+
+# Kubernetes secrets
+secrets/
+*.secret
+
+# Terraform files (if used)
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Helm charts (if used)
+charts/

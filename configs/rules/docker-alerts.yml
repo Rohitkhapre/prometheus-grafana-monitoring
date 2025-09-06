@@ -1,0 +1,74 @@
+groups:
+- name: docker.rules
+  rules:
+  - alert: DockerContainerDown
+    expr: up{job="docker-containers"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Docker container {{ $labels.container_name }} is down"
+      description: "Docker container {{ $labels.container_name }} has been down for more than 1 minute."
+
+  - alert: DockerContainerHighCPU
+    expr: rate(container_cpu_usage_seconds_total[5m]) * 100 > 80
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Docker container {{ $labels.container_name }} high CPU usage"
+      description: "Docker container {{ $labels.container_name }} CPU usage is above 80% for more than 2 minutes."
+
+  - alert: DockerContainerHighMemory
+    expr: container_memory_usage_bytes / container_spec_memory_limit_bytes * 100 > 80
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Docker container {{ $labels.container_name }} high memory usage"
+      description: "Docker container {{ $labels.container_name }} memory usage is above 80% for more than 2 minutes."
+
+  - alert: DockerContainerOOMKilled
+    expr: increase(container_oom_events_total[1h]) > 0
+    for: 0m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Docker container {{ $labels.container_name }} OOM killed"
+      description: "Docker container {{ $labels.container_name }} was killed due to out of memory."
+
+  - alert: DockerContainerRestarting
+    expr: rate(container_start_time_seconds[5m]) > 0
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Docker container {{ $labels.container_name }} is restarting frequently"
+      description: "Docker container {{ $labels.container_name }} has been restarting frequently."
+
+  - alert: DockerDaemonDown
+    expr: up{job="docker-daemon"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Docker daemon is down"
+      description: "Docker daemon has been down for more than 1 minute."
+
+  - alert: DockerHighDiskUsage
+    expr: (node_filesystem_size_bytes - node_filesystem_avail_bytes) / node_filesystem_size_bytes * 100 > 85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Docker host disk usage is high"
+      description: "Docker host disk usage is above 85% for more than 5 minutes."
+
+  - alert: DockerNetworkErrors
+    expr: rate(container_network_receive_errors_total[5m]) + rate(container_network_transmit_errors_total[5m]) > 0
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Docker container {{ $labels.container_name }} network errors"
+      description: "Docker container {{ $labels.container_name }} is experiencing network errors."
